@@ -12,6 +12,7 @@ VOLUME c:\gomematic
 ENTRYPOINT ["c:\\gomematic-api.exe"]
 CMD ["server"]
 
-ENV GOMEMATIC_API_UPLOAD_DSN file://gomematic/
+ENV GOMEMATIC_API_DB_DSN boltdb:///gomematic/database.db
+ENV GOMEMATIC_API_UPLOAD_DSN file:///gomematic/uploads
 
 COPY bin/gomematic-api.exe c:\gomematic-api.exe

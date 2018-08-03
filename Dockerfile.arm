@@ -14,7 +14,8 @@ VOLUME ["/var/lib/gomematic"]
 ENTRYPOINT ["/usr/bin/gomematic-api"]
 CMD ["server"]
 
-ENV GOMEMATIC_API_UPLOAD_DSN file://var/lib/gomematic/
+ENV GOMEMATIC_API_DB_DSN boltdb:///var/lib/gomematic/database.db
+ENV GOMEMATIC_API_UPLOAD_DSN file:///var/lib/gomematic/uploads
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /etc/mime.types /etc/

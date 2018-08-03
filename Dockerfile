@@ -11,7 +11,8 @@ VOLUME ["/var/lib/gomematic"]
 ENTRYPOINT ["/usr/bin/gomematic-api"]
 CMD ["server"]
 
-ENV GOMEMATIC_API_UPLOAD_DSN file://var/lib/gomematic/
+ENV GOMEMATIC_API_DB_DSN boltdb:///var/lib/gomematic/database.db
+ENV GOMEMATIC_API_UPLOAD_DSN file:///var/lib/gomematic/uploads
 
 RUN apk add --no-cache ca-certificates mailcap bash
 
