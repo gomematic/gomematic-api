@@ -1,7 +1,6 @@
 # Gomematic: API server
 
-[![Build Status](http://drone.gomematic.tech/api/badges/gomematic/gomematic-api/status.svg)](http://drone.gomematic.tech/gomematic/gomematic-api)
-[![Build Status](https://ci.appveyor.com/api/projects/status/gn2p9wx1eapos1yi?svg=true)](https://ci.appveyor.com/project/gomematicz/gomematic-api)
+[![Build Status](https://cloud.drone.io/api/badges/gomematic/gomematic-api/status.svg)](https://cloud.drone.io/gomematic/gomematic-api)
 [![Stories in Ready](https://badge.waffle.io/gomematic/gomematic-api.svg?label=ready&title=Ready)](http://waffle.io/gomematic/gomematic-api)
 [![Join the Matrix chat at https://matrix.to/#/#gomematic:matrix.org](https://img.shields.io/badge/matrix-%23gomematic-7bc9a4.svg)](https://matrix.to/#/#gomematic:matrix.org)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/ca2aacc664fb4d118b920fd7068edf37)](https://www.codacy.com/app/gomematic/gomematic-api?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=gomematic/gomematic-api&amp;utm_campaign=Badge_Grade)
@@ -21,23 +20,13 @@ You can download prebuilt binaries from the GitHub releases or from our [downloa
 
 ## Development
 
-Make sure you have a working Go environment, for further reference or a guide take a look at the [install instructions](http://golang.org/doc/install.html). This project requires Go >= v1.8. It is possible to just execute `go get github.com/gomematic/gomematic-api/cmd/gomematic-api`, but we prefer to use our `Makefile`:
+Make sure you have a working Go environment, for further reference or a guide take a look at the [install instructions](http://golang.org/doc/install.html). This project requires Go >= v1.11.
 
 ```bash
-go get -d github.com/gomematic/gomematic-api
-cd $GOPATH/src/github.com/gomematic/gomematic-api
+git clone https://github.com/gomematic/gomematic-api.git
+cd gomematic-api
 
-# install retool
-make retool
-
-# sync dependencies
-make sync
-
-# generate code
-make generate
-
-# build binary
-make build
+make sync generate build
 
 ./bin/gomematic-api -h
 ```
