@@ -11,13 +11,13 @@ LABEL maintainer="Thomas Boerger <thomas@webhippie.de>" \
 EXPOSE 8080 8090
 VOLUME ["/var/lib/gomematic"]
 
-ENTRYPOINT ["/usr/bin/gomematic-api"]
-CMD ["server"]
-
 ENV GOMEMATIC_API_DB_DSN boltdb:///var/lib/gomematic/database.db
 ENV GOMEMATIC_API_UPLOAD_DSN file:///var/lib/gomematic/uploads
+
+ENTRYPOINT ["/usr/bin/gomematic-api"]
+CMD ["server"]
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /etc/mime.types /etc/
 
-COPY dist/binaries/gomematic-api-*-linux-arm-5 /usr/bin/
+COPY dist/binaries/gomematic-api-*-linux-arm /usr/bin/gomematic-api
