@@ -26,7 +26,7 @@ Make sure you have a working Go environment, for further reference or a guide ta
 git clone https://github.com/gomematic/gomematic-api.git
 cd gomematic-api
 
-make sync generate build
+make generate build
 
 ./bin/gomematic-api -h
 ```
