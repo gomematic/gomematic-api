@@ -1,7 +1,6 @@
 # Gomematic: API server
 
 [![Build Status](https://cloud.drone.io/api/badges/gomematic/gomematic-api/status.svg)](https://cloud.drone.io/gomematic/gomematic-api)
-[![Stories in Ready](https://badge.waffle.io/gomematic/gomematic-api.svg?label=ready&title=Ready)](http://waffle.io/gomematic/gomematic-api)
 [![Join the Matrix chat at https://matrix.to/#/#gomematic:matrix.org](https://img.shields.io/badge/matrix-%23gomematic-7bc9a4.svg)](https://matrix.to/#/#gomematic:matrix.org)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/ca2aacc664fb4d118b920fd7068edf37)](https://www.codacy.com/app/gomematic/gomematic-api?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=gomematic/gomematic-api&amp;utm_campaign=Badge_Grade)
 [![Go Doc](https://godoc.org/github.com/gomematic/gomematic-api?status.svg)](http://godoc.org/github.com/gomematic/gomematic-api)
