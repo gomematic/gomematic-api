@@ -2,13 +2,19 @@ package main
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
+	"github.com/dchest/uniuri"
 	"github.com/gomematic/gomematic-api/pkg/config"
+	"github.com/gomematic/gomematic-api/pkg/middleware/requestid"
 	"github.com/gomematic/gomematic-api/pkg/router"
+	"github.com/gomematic/gomematic-api/pkg/service"
+	"github.com/gomematic/gomematic-api/pkg/service/teams"
+	"github.com/gomematic/gomematic-api/pkg/service/users"
 	"github.com/oklog/oklog/pkg/group"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/urfave/cli.v2"
@@ -90,6 +96,20 @@ func serverFlags(cfg *config.Config) []cli.Flag {
 			EnvVars:     []string{"GOMEMATIC_API_UPLOAD_DSN"},
 			Destination: &cfg.Upload.DSN,
 		},
+		&cli.DurationFlag{
+			Name:        "session-expire",
+			Value:       time.Hour * 24,
+			Usage:       "session expire duration",
+			EnvVars:     []string{"GOMEMATIC_API_SESSION_EXPIRE"},
+			Destination: &cfg.Session.Expire,
+		},
+		&cli.StringFlag{
+			Name:        "session-secret",
+			Value:       uniuri.NewLen(32),
+			Usage:       "session encription secret",
+			EnvVars:     []string{"GOMEMATIC_API_SESSION_SECRET"},
+			Destination: &cfg.Session.Secret,
+		},
 		&cli.BoolFlag{
 			Name:        "admin-create",
 			Value:       true,
@@ -109,7 +129,7 @@ func serverFlags(cfg *config.Config) []cli.Flag {
 			Value:       "admin",
 			Usage:       "initial admin password",
 			EnvVars:     []string{"GOMEMATIC_API_ADMIN_PASSWORD"},
-			Destination: &cfg.Admin.Username,
+			Destination: &cfg.Admin.Password,
 		},
 		&cli.StringFlag{
 			Name:        "admin-email",
@@ -156,18 +176,6 @@ func serverAction(cfg *config.Config) cli.ActionFunc {
 			defer tracing.Close()
 		}
 
-		storage, err := setupStorage(cfg)
-
-		if err != nil {
-			log.Fatal().
-				Err(err).
-				Msg("failed to setup database")
-		}
-
-		if storage != nil {
-			defer storage.Close()
-		}
-
 		uploads, err := setupUploads(cfg)
 
 		if err != nil {
@@ -177,18 +185,82 @@ func serverAction(cfg *config.Config) cli.ActionFunc {
 		}
 
 		log.Info().
-			Msg(uploads.Info())
+			Fields(uploads.Info()).
+			Msg("preparing uploads")
 
 		if uploads != nil {
 			defer uploads.Close()
 		}
+
+		storage, err := setupStorage(cfg)
+
+		if err != nil {
+			log.Fatal().
+				Err(err).
+				Msg("failed to setup database")
+		}
+
+		log.Info().
+			Fields(storage.Info()).
+			Msg("preparing database")
+
+		if storage != nil {
+			defer storage.Close()
+		}
+
+		for i := 0; i < 10; i++ {
+			err := storage.Ping()
+
+			if err != nil {
+				dur := time.Duration(math.Pow(2, float64(i))) * time.Second
+
+				log.Warn().
+					Str("retry", dur.String()).
+					Msg("database ping failed")
+
+				time.Sleep(dur)
+			}
+		}
+
+		if cfg.Admin.Create {
+			err := storage.Admin(
+				cfg.Admin.Username,
+				cfg.Admin.Password,
+				cfg.Admin.Email,
+			)
+
+			if err != nil {
+				log.Warn().
+					Err(err).
+					Str("username", cfg.Admin.Username).
+					Str("password", cfg.Admin.Password).
+					Str("email", cfg.Admin.Email).
+					Msg("failed to create admin")
+			} else {
+				log.Info().
+					Str("username", cfg.Admin.Username).
+					Str("password", cfg.Admin.Password).
+					Str("email", cfg.Admin.Email).
+					Msg("admin successfully stored")
+			}
+		}
+
+		registry := service.New()
+
+		registry.Teams = teams.NewService(storage.Teams())
+		registry.Teams = teams.NewLoggingService(registry.Teams, requestid.Get)
+		registry.Teams = teams.NewTracingService(registry.Teams, requestid.Get)
+
+		registry.Users = users.NewService(storage.Users())
+		registry.Users = users.NewLoggingService(registry.Users, requestid.Get)
+		registry.Users = users.NewTracingService(registry.Users, requestid.Get)
 
 		var gr group.Group
 
 		{
 			server := &http.Server{
 				Addr:         cfg.Server.Addr,
-				Handler:      router.Server(cfg, storage, uploads),
+				Handler:      router.Server(cfg, uploads, registry),
 				ReadTimeout:  5 * time.Second,
 				WriteTimeout: 10 * time.Second,
 			}
@@ -220,7 +292,7 @@ func serverAction(cfg *config.Config) cli.ActionFunc {
 		{
 			server := &http.Server{
 				Addr:         cfg.Metrics.Addr,
-				Handler:      router.Metrics(cfg, storage, uploads),
+				Handler:      router.Metrics(cfg),
 				ReadTimeout:  5 * time.Second,
 				WriteTimeout: 10 * time.Second,
 			}

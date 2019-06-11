@@ -13,7 +13,7 @@ var (
 
 // Upload provides the interface for the upload implementations.
 type Upload interface {
-	Info() string
+	Info() map[string]interface{}
 	Prepare() (Upload, error)
 	Close() error
 	Handler(string) http.Handler

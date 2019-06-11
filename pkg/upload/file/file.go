@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,8 +15,12 @@ type file struct {
 }
 
 // Info prepares some informational message about the handler.
-func (u *file) Info() string {
-	return fmt.Sprintf("prepared file storage at %s", u.path())
+func (u *file) Info() map[string]interface{} {
+	result := make(map[string]interface{})
+	result["driver"] = "file"
+	result["path"] = u.path()
+
+	return result
 }
 
 // Prepare simply prepares the upload handler.
@@ -58,7 +61,7 @@ func (u *file) perms() os.FileMode {
 		return os.FileMode(u)
 	}
 
-	return 0755
+	return os.FileMode(0755)
 }
 
 // path cleans the dsn and returns a valid path.

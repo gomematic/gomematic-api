@@ -1,5 +1,9 @@
 package config
 
+import (
+	"time"
+)
+
 // Database defines the database configuration.
 type Database struct {
 	DSN string
@@ -8,6 +12,12 @@ type Database struct {
 // Upload defines the asset upload configuration.
 type Upload struct {
 	DSN string
+}
+
+// Session defines the session handle configuration.
+type Session struct {
+	Expire time.Duration
+	Secret string
 }
 
 // Server defines the webserver configuration.
@@ -50,6 +60,7 @@ type Tracing struct {
 type Config struct {
 	Database Database
 	Upload   Upload
+	Session  Session
 	Server   Server
 	Metrics  Metrics
 	Admin    Admin

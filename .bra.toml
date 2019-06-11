@@ -16,6 +16,8 @@ init_cmds = [
     "--log-level",
     "debug",
     "server",
+    "--session-secret",
+    "xKRWhQZaTYMPqX0oZfmQLrAMLQlhotmm",
     "--db-dsn",
     "boltdb://storage/gomematic.db"
   ]
@@ -28,6 +30,8 @@ cmds = [
     "--log-level",
     "debug",
     "server",
+    "--session-secret",
+    "xKRWhQZaTYMPqX0oZfmQLrAMLQlhotmm",
     "--db-dsn",
     "boltdb://storage/gomematic.db"
   ]

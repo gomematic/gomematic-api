@@ -12,8 +12,13 @@ type s3 struct {
 }
 
 // Info prepares some informational message about the handler.
-func (u *s3) Info() string {
-	return ""
+func (u *s3) Info() map[string]interface{} {
+	result := make(map[string]interface{})
+	result["driver"] = "s3"
+	result["bucket"] = ""
+	result["region"] = ""
+
+	return result
 }
 
 // Prepare simply prepares the upload handler.
