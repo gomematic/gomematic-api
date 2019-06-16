@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/Machiel/slugify"
+	"github.com/asaskevich/govalidator"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
 	"github.com/gomematic/gomematic-api/pkg/model"
 	"github.com/gomematic/gomematic-api/pkg/service/teams"
 	"github.com/gomematic/gomematic-api/pkg/uuid"
+	"github.com/gomematic/gomematic-api/pkg/validation"
 )
 
 // Teams implements teams.Store interface.
@@ -85,6 +87,10 @@ func (t *Teams) Create(ctx context.Context, team *model.Team) (*model.Team, erro
 	team.UpdatedAt = time.Now().UTC()
 	team.CreatedAt = time.Now().UTC()
 
+	if err := t.validateCreate(team); err != nil {
+		return nil, err
+	}
+
 	if err := tx.Save(team); err != nil {
 		return nil, err
 	}
@@ -134,6 +140,10 @@ func (t *Teams) Update(ctx context.Context, team *model.Team) (*model.Team, erro
 	}
 
 	team.UpdatedAt = time.Now().UTC()
+
+	if err := t.validateUpdate(team); err != nil {
+		return nil, err
+	}
 
 	if err := tx.Save(team); err != nil {
 		return nil, err
@@ -229,6 +239,10 @@ func (t *Teams) AppendUser(ctx context.Context, teamID, userID, perm string) err
 		CreatedAt: time.Now().UTC(),
 	}
 
+	if err := t.validatePerm(record); err != nil {
+		return err
+	}
+
 	if err := tx.Save(record); err != nil {
 		return err
 	}
@@ -258,6 +272,10 @@ func (t *Teams) PermitUser(ctx context.Context, teamID, userID, perm string) err
 
 	record.Perm = perm
 	record.UpdatedAt = time.Now().UTC()
+
+	if err := t.validatePerm(record); err != nil {
+		return err
+	}
 
 	if err := tx.Save(record); err != nil {
 		return err
@@ -291,4 +309,110 @@ func (t *Teams) DropUser(ctx context.Context, teamID, userID string) error {
 	}
 
 	return tx.Commit()
+}
+
+func (t *Teams) validateCreate(record *model.Team) error {
+	errs := validation.Errors{}
+
+	// TODO: unique check for slug
+
+	if ok := govalidator.IsAlphanumeric(record.Slug); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	// TODO: unique check for name
+
+	if ok := govalidator.IsAlphanumeric(record.Name); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Name, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if len(errs.Errors) > 0 {
+		return errs
+	}
+
+	return nil
+}
+
+func (t *Teams) validateUpdate(record *model.Team) error {
+	errs := validation.Errors{}
+
+	if ok := govalidator.IsUUIDv4(record.ID); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "id",
+			Error: fmt.Errorf("is not a valid uuid v4"),
+		})
+	}
+
+	// TODO: unique check for slug
+
+	if ok := govalidator.IsAlphanumeric(record.Slug); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	// TODO: unique check for name
+
+	if ok := govalidator.IsAlphanumeric(record.Name); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Name, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if len(errs.Errors) > 0 {
+		return errs
+	}
+
+	return nil
+}
+
+func (t *Teams) validatePerm(record *model.TeamUser) error {
+	if ok := govalidator.IsIn(record.Perm, "user", "admin", "owner"); !ok {
+		return validation.Errors{
+			Errors: []validation.Error{
+				validation.Error{
+					Field: "perm",
+					Error: fmt.Errorf("invalid permission value"),
+				},
+			},
+		}
+	}
+
+	return nil
 }

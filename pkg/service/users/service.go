@@ -77,18 +77,10 @@ func (s *service) Show(ctx context.Context, id string) (*model.User, error) {
 }
 
 func (s *service) Create(ctx context.Context, user *model.User) (*model.User, error) {
-	if err := ValidateCreate(user); err != nil {
-		return nil, err
-	}
-
 	return s.users.Create(ctx, user)
 }
 
 func (s *service) Update(ctx context.Context, user *model.User) (*model.User, error) {
-	if err := ValidateUpdate(user); err != nil {
-		return nil, err
-	}
-
 	return s.users.Update(ctx, user)
 }
 
@@ -107,18 +99,10 @@ func (s *service) ListTeams(ctx context.Context, name string) ([]*model.TeamUser
 }
 
 func (s *service) AppendTeam(ctx context.Context, userID, teamID, perm string) error {
-	if err := validatePerm(perm); err != nil {
-		return err
-	}
-
 	return s.users.AppendTeam(ctx, userID, teamID, perm)
 }
 
 func (s *service) PermitTeam(ctx context.Context, userID, teamID, perm string) error {
-	if err := validatePerm(perm); err != nil {
-		return err
-	}
-
 	return s.users.PermitTeam(ctx, userID, teamID, perm)
 }
 

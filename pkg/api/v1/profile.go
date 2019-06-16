@@ -8,9 +8,9 @@ import (
 	"github.com/gomematic/gomematic-api/pkg/api/v1/restapi/operations/profile"
 	"github.com/gomematic/gomematic-api/pkg/config"
 	"github.com/gomematic/gomematic-api/pkg/service"
-	"github.com/gomematic/gomematic-api/pkg/service/users"
 	"github.com/gomematic/gomematic-api/pkg/token"
 	"github.com/gomematic/gomematic-api/pkg/upload"
+	"github.com/gomematic/gomematic-api/pkg/validation"
 )
 
 // TokenProfileHandler implements the handler for the ProfileTokenProfile operation.
@@ -67,7 +67,7 @@ func UpdateProfileHandler(cfg *config.Config, uploads upload.Upload, registry *s
 		updated, err := registry.Users.Update(params.HTTPRequest.Context(), record)
 
 		if err != nil {
-			if v, ok := err.(users.ValidationErrors); ok {
+			if v, ok := err.(validation.Errors); ok {
 				message := "failed to validate profile"
 
 				payload := &models.ValidationError{

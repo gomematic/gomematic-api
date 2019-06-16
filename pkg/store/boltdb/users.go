@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/Machiel/slugify"
+	"github.com/asaskevich/govalidator"
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
 	"github.com/gomematic/gomematic-api/pkg/model"
 	"github.com/gomematic/gomematic-api/pkg/service/users"
 	"github.com/gomematic/gomematic-api/pkg/uuid"
+	"github.com/gomematic/gomematic-api/pkg/validation"
 )
 
 var (
@@ -133,6 +135,10 @@ func (u *Users) Create(ctx context.Context, user *model.User) (*model.User, erro
 	user.UpdatedAt = time.Now().UTC()
 	user.CreatedAt = time.Now().UTC()
 
+	if err := u.validateCreate(user); err != nil {
+		return nil, err
+	}
+
 	if err := tx.Save(user); err != nil {
 		return nil, err
 	}
@@ -195,6 +201,10 @@ func (u *Users) Update(ctx context.Context, user *model.User) (*model.User, erro
 	}
 
 	user.UpdatedAt = time.Now().UTC()
+
+	if err := u.validateUpdate(user); err != nil {
+		return nil, err
+	}
 
 	if err := tx.Save(user); err != nil {
 		return nil, err
@@ -290,6 +300,10 @@ func (u *Users) AppendTeam(ctx context.Context, userID, teamID, perm string) err
 		CreatedAt: time.Now().UTC(),
 	}
 
+	if err := u.validatePerm(record); err != nil {
+		return err
+	}
+
 	if err := tx.Save(record); err != nil {
 		return err
 	}
@@ -319,6 +333,10 @@ func (u *Users) PermitTeam(ctx context.Context, userID, teamID, perm string) err
 
 	record.Perm = perm
 	record.UpdatedAt = time.Now().UTC()
+
+	if err := u.validatePerm(record); err != nil {
+		return err
+	}
 
 	if err := tx.Save(record); err != nil {
 		return err
@@ -352,4 +370,137 @@ func (u *Users) DropTeam(ctx context.Context, userID, teamID string) error {
 	}
 
 	return tx.Commit()
+}
+
+func (u *Users) validateCreate(record *model.User) error {
+	errs := validation.Errors{}
+
+	// TODO: unique check for slug
+
+	if ok := govalidator.IsAlphanumeric(record.Slug); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	// TODO: unique check for email
+
+	if ok := govalidator.IsEmail(record.Email); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "email",
+			Error: fmt.Errorf("is not valid"),
+		})
+	}
+
+	// TODO: unique check for username
+
+	if ok := govalidator.IsAlphanumeric(record.Username); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "username",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Username, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "username",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Password, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "password",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if len(errs.Errors) > 0 {
+		return errs
+	}
+
+	return nil
+}
+
+func (u *Users) validateUpdate(record *model.User) error {
+	errs := validation.Errors{}
+
+	if ok := govalidator.IsUUIDv4(record.ID); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "id",
+			Error: fmt.Errorf("is not a valid uuid v4"),
+		})
+	}
+
+	// TODO: unique check for slug
+
+	if ok := govalidator.IsAlphanumeric(record.Slug); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	// TODO: unique check for email
+
+	if ok := govalidator.IsEmail(record.Email); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "email",
+			Error: fmt.Errorf("is not valid"),
+		})
+	}
+
+	// TODO: unique check for username
+
+	if ok := govalidator.IsAlphanumeric(record.Username); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "username",
+			Error: fmt.Errorf("is not alphanumeric"),
+		})
+	}
+
+	if ok := govalidator.IsByteLength(record.Username, 3, 255); !ok {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "username",
+			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	// TODO: valid check for password
+
+	if len(errs.Errors) > 0 {
+		return errs
+	}
+
+	return nil
+}
+
+func (u *Users) validatePerm(record *model.TeamUser) error {
+	if ok := govalidator.IsIn(record.Perm, "user", "admin", "owner"); !ok {
+		return validation.Errors{
+			Errors: []validation.Error{
+				validation.Error{
+					Field: "perm",
+					Error: fmt.Errorf("invalid permission value"),
+				},
+			},
+		}
+	}
+
+	return nil
 }

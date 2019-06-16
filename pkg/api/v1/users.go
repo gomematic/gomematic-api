@@ -12,6 +12,7 @@ import (
 	"github.com/gomematic/gomematic-api/pkg/service/teams"
 	"github.com/gomematic/gomematic-api/pkg/service/users"
 	"github.com/gomematic/gomematic-api/pkg/upload"
+	"github.com/gomematic/gomematic-api/pkg/validation"
 )
 
 // ListUsersHandler implements the handler for the ListUsers operation.
@@ -109,7 +110,7 @@ func CreateUserHandler(cfg *config.Config, uploads upload.Upload, registry *serv
 		created, err := registry.Users.Create(params.HTTPRequest.Context(), record)
 
 		if err != nil {
-			if v, ok := err.(users.ValidationErrors); ok {
+			if v, ok := err.(validation.Errors); ok {
 				message := "failed to validate user"
 
 				payload := &models.ValidationError{
@@ -186,7 +187,7 @@ func UpdateUserHandler(cfg *config.Config, uploads upload.Upload, registry *serv
 		updated, err := registry.Users.Update(params.HTTPRequest.Context(), record)
 
 		if err != nil {
-			if v, ok := err.(users.ValidationErrors); ok {
+			if v, ok := err.(validation.Errors); ok {
 				message := "failed to validate user"
 
 				payload := &models.ValidationError{
@@ -324,7 +325,7 @@ func AppendUserToTeamHandler(cfg *config.Config, uploads upload.Upload, registry
 				})
 			}
 
-			if v, ok := err.(users.ValidationErrors); ok {
+			if v, ok := err.(validation.Errors); ok {
 				message := "failed to validate user team"
 
 				payload := &models.ValidationError{
@@ -399,7 +400,7 @@ func PermitUserTeamHandler(cfg *config.Config, uploads upload.Upload, registry *
 				})
 			}
 
-			if v, ok := err.(users.ValidationErrors); ok {
+			if v, ok := err.(validation.Errors); ok {
 				message := "failed to validate user team"
 
 				payload := &models.ValidationError{
