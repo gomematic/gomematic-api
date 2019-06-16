@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/Machiel/slugify v1.0.1
+	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/dchest/authcookie v0.0.0-20120917135355-fbdef6e99866
 	github.com/dchest/uniuri v0.0.0-20160212164326-8902c56451e9

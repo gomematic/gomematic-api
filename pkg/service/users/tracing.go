@@ -50,19 +50,33 @@ func (s *tracingService) Show(ctx context.Context, id string) (*model.User, erro
 }
 
 func (s *tracingService) Create(ctx context.Context, user *model.User) (*model.User, error) {
+	name := ""
+
+	if user != nil {
+		name = user.Username
+	}
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "users.Service.Create")
 	span.SetTag("request", s.requestID(ctx))
-	span.SetTag("name", user.Username)
+	span.SetTag("name", name)
 	defer span.Finish()
 
 	return s.service.Create(ctx, user)
 }
 
 func (s *tracingService) Update(ctx context.Context, user *model.User) (*model.User, error) {
+	id := ""
+	name := ""
+
+	if user != nil {
+		id = user.ID
+		name = user.Username
+	}
+
 	span, ctx := opentracing.StartSpanFromContext(ctx, "users.Service.Update")
 	span.SetTag("request", s.requestID(ctx))
-	span.SetTag("id", user.ID)
-	span.SetTag("name", user.Username)
+	span.SetTag("id", id)
+	span.SetTag("name", name)
 	defer span.Finish()
 
 	return s.service.Update(ctx, user)

@@ -81,8 +81,14 @@ func CreateTeamHandler(cfg *config.Config, uploads upload.Upload, registry *serv
 		}
 
 		record := &model.Team{}
-		record.Slug = *params.Team.Slug
-		record.Name = *params.Team.Name
+
+		if params.Team.Slug != nil {
+			record.Slug = *params.Team.Slug
+		}
+
+		if params.Team.Name != nil {
+			record.Name = *params.Team.Name
+		}
 
 		created, err := registry.Teams.Create(params.HTTPRequest.Context(), record)
 

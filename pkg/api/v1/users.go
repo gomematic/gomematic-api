@@ -81,12 +81,30 @@ func CreateUserHandler(cfg *config.Config, uploads upload.Upload, registry *serv
 		}
 
 		record := &model.User{}
-		record.Slug = *params.User.Slug
-		record.Username = *params.User.Username
-		record.Password = (*params.User.Password).String()
-		record.Email = *params.User.Email
-		record.Active = *params.User.Active
-		record.Admin = *params.User.Admin
+
+		if params.User.Slug != nil {
+			record.Slug = *params.User.Slug
+		}
+
+		if params.User.Username != nil {
+			record.Username = *params.User.Username
+		}
+
+		if params.User.Password != nil {
+			record.Password = (*params.User.Password).String()
+		}
+
+		if params.User.Email != nil {
+			record.Email = *params.User.Email
+		}
+
+		if params.User.Active != nil {
+			record.Active = *params.User.Active
+		}
+
+		if params.User.Admin != nil {
+			record.Admin = *params.User.Admin
+		}
 
 		created, err := registry.Users.Create(params.HTTPRequest.Context(), record)
 

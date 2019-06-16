@@ -76,11 +76,17 @@ func (s *loggingService) Create(ctx context.Context, team *model.Team) (*model.T
 	start := time.Now()
 	record, err := s.service.Create(ctx, team)
 
+	name := ""
+
+	if record != nil {
+		name = record.Name
+	}
+
 	logger := s.logger.With().
 		Str("request", s.requestID(ctx)).
 		Str("method", "Create").
 		Dur("duration", time.Since(start)).
-		Str("name", record.Name).
+		Str("name", name).
 		Logger()
 
 	if err != nil {
@@ -99,12 +105,20 @@ func (s *loggingService) Update(ctx context.Context, team *model.Team) (*model.T
 	start := time.Now()
 	record, err := s.service.Update(ctx, team)
 
+	id := ""
+	name := ""
+
+	if record != nil {
+		id = record.ID
+		name = record.Name
+	}
+
 	logger := s.logger.With().
 		Str("request", s.requestID(ctx)).
 		Str("method", "Create").
 		Dur("duration", time.Since(start)).
-		Str("id", record.ID).
-		Str("name", record.Name).
+		Str("id", id).
+		Str("name", name).
 		Logger()
 
 	if err != nil && err != ErrNotFound {
