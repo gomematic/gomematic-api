@@ -1,0 +1,22 @@
+version: '3.4'
+
+volumes:
+  mariadb:
+
+services:
+  api:
+    environment:
+      - GOMEMATIC_API_DB_DSN=mysql://gomematic:gomematic@db:3306/gomematic
+    depends_on:
+      - db
+
+  db:
+    image: webhippie/mariadb:latest
+    restart: always
+    environment:
+      - MARIADB_ROOT_PASSWORD=gomematic
+      - MARIADB_USERNAME=gomematic
+      - MARIADB_PASSWORD=gomematic
+      - MARIADB_DATABASE=gomematic
+    volumes:
+      - mariadb:/var/lib/mysql

@@ -1,0 +1,20 @@
+version: '3.4'
+
+volumes:
+  minio:
+
+services:
+  api:
+    environment:
+      - GOMEMATIC_API_UPLOAD_DSN=minio://9VKV3OI56N1077Y9IALV:bwcRkW5w6uF6BWBqotsnMbwZSIDKQopy9DSo90ab@minio:9000/gomematic
+    depends_on:
+      - minio
+
+  minio:
+    image: webhippie/minio:latest
+    restart: always
+    environment:
+      - MINIO_ACCESS_KEY=9VKV3OI56N1077Y9IALV
+      - MINIO_SECRET_KEY=bwcRkW5w6uF6BWBqotsnMbwZSIDKQopy9DSo90ab
+    volumes:
+      - minio:/var/lib/minio

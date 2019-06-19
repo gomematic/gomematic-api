@@ -1,0 +1,22 @@
+version: '3.4'
+
+volumes:
+  postgres:
+
+services:
+  api:
+    environment:
+      - GOMEMATIC_API_DB_DSN=postgres://gomematic:gomematic@db:3306/gomematic
+    depends_on:
+      - db
+
+  db:
+    image: webhippie/postgresql:latest
+    restart: always
+    environment:
+      - POSTGRESQL_ROOT_PASSWORD=gomematic
+      - POSTGRESQL_USERNAME=gomematic
+      - POSTGRESQL_PASSWORD=gomematic
+      - POSTGRESQL_DATABASE=gomematic
+    volumes:
+      - postgres:/var/lib/postgresql

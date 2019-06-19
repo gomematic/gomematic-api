@@ -1,0 +1,5 @@
+version: '3.4'
+
+services:
+  api:
+    image: gomematic/gomematic-api:${GOMEMATIC_API_DOCKER_IMAGE:-latest}

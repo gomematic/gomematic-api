@@ -1,0 +1,11 @@
+version: '3.4'
+
+volumes:
+  boltdb:
+
+services:
+  api:
+    environment:
+      - GOMEMATIC_API_DB_DSN=boltdb:///var/lib/database/gomematic.db
+    volumes:
+      - boltdb:/var/lib/database
