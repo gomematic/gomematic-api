@@ -6,7 +6,7 @@ volumes:
 services:
   api:
     environment:
-      - GOMEMATIC_API_DB_DSN=postgres://gomematic:gomematic@db:3306/gomematic
+      - GOMEMATIC_API_DB_DSN=postgres://gomematic:gomematic@db:5432/gomematic
     depends_on:
       - db
 

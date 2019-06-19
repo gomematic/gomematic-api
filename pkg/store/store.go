@@ -17,6 +17,7 @@ type Store interface {
 	Open() error
 	Close() error
 	Ping() error
+	Migrate() error
 	Admin(string, string, string) error
 	Teams() teams.Store
 	Users() users.Store

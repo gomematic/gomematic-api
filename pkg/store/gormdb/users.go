@@ -1,20 +1,18 @@
-package boltdb
+package gormdb
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Machiel/slugify"
 	"github.com/asaskevich/govalidator"
-	"github.com/asdine/storm"
-	"github.com/asdine/storm/q"
 	"github.com/gomematic/gomematic-api/pkg/model"
 	"github.com/gomematic/gomematic-api/pkg/service/users"
 	"github.com/gomematic/gomematic-api/pkg/uuid"
 	"github.com/gomematic/gomematic-api/pkg/validation"
+	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,20 +23,23 @@ var (
 
 // Users implements users.Store interface.
 type Users struct {
-	client *boltdb
+	client *gormdb
 }
 
 // ByBasicAuth implements ByBasicAuth from users.Store interface.
 func (u *Users) ByBasicAuth(ctx context.Context, username, password string) (*model.User, error) {
 	record := &model.User{}
 
-	if err := u.client.handle.Select(
-		q.Or(
-			q.Eq("Username", username),
-			q.Eq("Email", username),
-		),
-	).First(record); err != nil {
-		if err == storm.ErrNotFound {
+	if err := u.client.handle.Where(
+		"username = ?",
+		username,
+	).Or(
+		"email = ?",
+		username,
+	).First(
+		record,
+	).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
 			return nil, users.ErrNotFound
 		}
 
@@ -59,10 +60,11 @@ func (u *Users) ByBasicAuth(ctx context.Context, username, password string) (*mo
 func (u *Users) List(ctx context.Context) ([]*model.User, error) {
 	records := make([]*model.User, 0)
 
-	err := u.client.handle.AllByIndex(
-		"Username",
+	err := u.client.handle.Order(
+		"username ASC",
+	).Find(
 		&records,
-	)
+	).Error
 
 	return records, err
 }
@@ -71,14 +73,17 @@ func (u *Users) List(ctx context.Context) ([]*model.User, error) {
 func (u *Users) Show(ctx context.Context, name string) (*model.User, error) {
 	record := &model.User{}
 
-	err := u.client.handle.Select(
-		q.Or(
-			q.Eq("ID", name),
-			q.Eq("Slug", name),
-		),
-	).First(record)
+	err := u.client.handle.Where(
+		"id = ?",
+		name,
+	).Or(
+		"slug = ?",
+		name,
+	).First(
+		record,
+	).Error
 
-	if err == storm.ErrNotFound {
+	if err == gorm.ErrRecordNotFound {
 		return record, users.ErrNotFound
 	}
 
@@ -87,13 +92,12 @@ func (u *Users) Show(ctx context.Context, name string) (*model.User, error) {
 
 // Create implements Create from users.Store interface.
 func (u *Users) Create(ctx context.Context, user *model.User) (*model.User, error) {
-	tx, err := u.client.handle.Begin(true)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer tx.Rollback()
+	tx := u.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	if user.Password != "" && !strings.HasPrefix(user.Password, "$2a") {
 		encrypt, err := bcrypt.GenerateFromPassword(
@@ -102,6 +106,7 @@ func (u *Users) Create(ctx context.Context, user *model.User) (*model.User, erro
 		)
 
 		if err != nil {
+			tx.Rollback()
 			return nil, ErrPasswordEncrypt
 		}
 
@@ -118,31 +123,30 @@ func (u *Users) Create(ctx context.Context, user *model.User) (*model.User, erro
 				)
 			}
 
-			if err := tx.Select(
-				q.Eq("Slug", user.Slug),
-			).First(new(model.User)); err != nil {
-				if err == storm.ErrNotFound {
-					break
-				}
-
-				return nil, err
+			if tx.Where(
+				"slug = ?",
+				user.Slug,
+			).First(
+				&model.User{},
+			).RecordNotFound() {
+				break
 			}
 		}
 	}
 
 	user.ID = uuid.New().String()
-	user.UpdatedAt = time.Now().UTC()
-	user.CreatedAt = time.Now().UTC()
 
 	if err := u.validateCreate(user); err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Save(user); err != nil {
+	if err := tx.Create(user).Error; err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -151,13 +155,12 @@ func (u *Users) Create(ctx context.Context, user *model.User) (*model.User, erro
 
 // Update implements Update from users.Store interface.
 func (u *Users) Update(ctx context.Context, user *model.User) (*model.User, error) {
-	tx, err := u.client.handle.Begin(true)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer tx.Rollback()
+	tx := u.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	if user.Password != "" && !strings.HasPrefix(user.Password, "$2a") {
 		encrypt, err := bcrypt.GenerateFromPassword(
@@ -166,6 +169,7 @@ func (u *Users) Update(ctx context.Context, user *model.User) (*model.User, erro
 		)
 
 		if err != nil {
+			tx.Rollback()
 			return nil, ErrPasswordEncrypt
 		}
 
@@ -182,34 +186,31 @@ func (u *Users) Update(ctx context.Context, user *model.User) (*model.User, erro
 				)
 			}
 
-			if err := tx.Select(
-				q.And(
-					q.Eq("Slug", user.Slug),
-					q.Not(
-						q.Eq("ID", user.ID),
-					),
-				),
-			).First(new(model.User)); err != nil {
-				if err == storm.ErrNotFound {
-					break
-				}
-
-				return nil, err
+			if tx.Where(
+				"slug = ?",
+				user.Slug,
+			).Not(
+				"id",
+				user.ID,
+			).First(
+				&model.User{},
+			).RecordNotFound() {
+				break
 			}
 		}
 	}
 
-	user.UpdatedAt = time.Now().UTC()
-
 	if err := u.validateUpdate(user); err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Save(user); err != nil {
+	if err := tx.Save(user).Error; err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -218,157 +219,175 @@ func (u *Users) Update(ctx context.Context, user *model.User) (*model.User, erro
 
 // Delete implements Delete from users.Store interface.
 func (u *Users) Delete(ctx context.Context, name string) error {
-	tx, err := u.client.handle.Begin(true)
+	tx := u.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	if err != nil {
+	if err := u.client.handle.Where(
+		"id = ?",
+		name,
+	).Or(
+		"slug = ?",
+		name,
+	).Delete(
+		&model.User{},
+	).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	defer tx.Rollback()
-
-	if err := tx.Select(
-		q.Or(
-			q.Eq("ID", name),
-			q.Eq("Slug", name),
-		),
-	).Delete(new(model.User)); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return tx.Commit().Error
 }
 
 // ListTeams implements ListTeams from users.Store interface.
 func (u *Users) ListTeams(ctx context.Context, id string) ([]*model.TeamUser, error) {
 	records := make([]*model.TeamUser, 0)
 
-	if err := u.client.handle.Select(
-		q.Eq("UserID", id),
-	).Find(&records); err != nil {
-		if err == storm.ErrNotFound {
-			return records, nil
-		}
+	err := u.client.handle.Where(
+		"user_id = ?",
+		id,
+	).Model(
+		&model.TeamUser{},
+	).Preload(
+		"User",
+	).Preload(
+		"Team",
+	).Find(
+		&records,
+	).Error
 
-		return nil, err
-	}
-
-	for _, record := range records {
-		user, err := u.Show(ctx, record.UserID)
-
-		if err != nil {
-			return nil, err
-		}
-
-		team, err := u.client.Teams().Show(ctx, record.TeamID)
-
-		if err != nil {
-			return nil, err
-		}
-
-		record.User = user
-		record.Team = team
-	}
-
-	return records, nil
+	return records, err
 }
 
 // AppendTeam implements AppendTeam from teams.Store interface.
 func (u *Users) AppendTeam(ctx context.Context, userID, teamID, perm string) error {
-	tx, err := u.client.handle.Begin(true)
-
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-
-	if err := u.client.handle.Select(
-		q.And(
-			q.Eq("UserID", userID),
-			q.Eq("TeamID", teamID),
-		),
-	).First(new(model.TeamUser)); err == nil {
+	if u.isAssignedToTeam(userID, teamID) {
 		return users.ErrAlreadyAssigned
 	}
 
+	tx := u.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	record := &model.TeamUser{
-		UserID:    userID,
-		TeamID:    teamID,
-		Perm:      perm,
-		UpdatedAt: time.Now().UTC(),
-		CreatedAt: time.Now().UTC(),
+		UserID: userID,
+		TeamID: teamID,
+		Perm:   perm,
 	}
 
 	if err := u.validatePerm(record); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	if err := tx.Save(record); err != nil {
+	if err := tx.Create(record).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit()
+	return tx.Commit().Error
 }
 
 // PermitTeam implements PermitTeam from teams.Store interface.
 func (u *Users) PermitTeam(ctx context.Context, userID, teamID, perm string) error {
-	tx, err := u.client.handle.Begin(true)
-
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-	record := &model.TeamUser{}
-
-	if err := u.client.handle.Select(
-		q.And(
-			q.Eq("UserID", userID),
-			q.Eq("TeamID", teamID),
-		),
-	).First(record); err == storm.ErrNotFound {
+	if u.isUnassignedFromTeam(userID, teamID) {
 		return users.ErrNotAssigned
 	}
 
+	tx := u.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	record := &model.TeamUser{}
 	record.Perm = perm
-	record.UpdatedAt = time.Now().UTC()
 
 	if err := u.validatePerm(record); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	if err := tx.Save(record); err != nil {
+	if err := tx.Where(
+		"user_id = ? AND team_id = ?",
+		userID,
+		teamID,
+	).Model(
+		&model.TeamUser{},
+	).Updates(
+		record,
+	).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit()
+	return tx.Commit().Error
 }
 
 // DropTeam implements DropTeam from teams.Store interface.
 func (u *Users) DropTeam(ctx context.Context, userID, teamID string) error {
-	tx, err := u.client.handle.Begin(true)
-
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-	record := &model.TeamUser{}
-
-	if err := u.client.handle.Select(
-		q.And(
-			q.Eq("UserID", userID),
-			q.Eq("TeamID", teamID),
-		),
-	).First(record); err == storm.ErrNotFound {
+	if u.isUnassignedFromTeam(userID, teamID) {
 		return users.ErrNotAssigned
 	}
 
-	if err := tx.DeleteStruct(record); err != nil {
+	tx := u.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where(
+		"user_id = ? AND team_id = ?",
+		userID,
+		teamID,
+	).Delete(
+		&model.TeamUser{},
+	).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit()
+	return tx.Commit().Error
+}
+
+func (u *Users) isAssignedToTeam(userID, teamID string) bool {
+	counter := 0
+
+	u.client.handle.Where(
+		"user_id = ? AND team_id = ?",
+		userID,
+		teamID,
+	).Model(
+		&model.TeamUser{},
+	).Count(
+		&counter,
+	)
+
+	return counter != 0
+}
+
+func (u *Users) isUnassignedFromTeam(userID, teamID string) bool {
+	counter := 0
+
+	u.client.handle.Where(
+		"user_id = ? AND team_id = ?",
+		userID,
+		teamID,
+	).Model(
+		&model.TeamUser{},
+	).Count(
+		&counter,
+	)
+
+	return counter == 0
 }
 
 func (u *Users) validateCreate(record *model.User) error {

@@ -9,8 +9,7 @@ import (
 	"github.com/gomematic/gomematic-api/pkg/config"
 	"github.com/gomematic/gomematic-api/pkg/store"
 	"github.com/gomematic/gomematic-api/pkg/store/boltdb"
-	"github.com/gomematic/gomematic-api/pkg/store/mysql"
-	"github.com/gomematic/gomematic-api/pkg/store/postgres"
+	"github.com/gomematic/gomematic-api/pkg/store/gormdb"
 	"github.com/gomematic/gomematic-api/pkg/upload"
 	"github.com/gomematic/gomematic-api/pkg/upload/file"
 	"github.com/gomematic/gomematic-api/pkg/upload/s3"
@@ -108,12 +107,10 @@ func setupStorage(cfg *config.Config) (store.Store, error) {
 	switch parsed.Scheme {
 	case "boltdb":
 		return boltdb.New(parsed)
-	case "postgres":
-		return postgres.New(parsed)
 	case "mysql":
-		return mysql.New(parsed)
-	case "mariadb":
-		return mysql.New(parsed)
+		return gormdb.New(parsed)
+	case "postgres":
+		return gormdb.New(parsed)
 	}
 
 	return nil, store.ErrUnknownDriver

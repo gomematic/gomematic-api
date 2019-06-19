@@ -19,11 +19,14 @@ require (
 	github.com/go-openapi/strfmt v0.19.0
 	github.com/go-openapi/swag v0.19.0
 	github.com/go-openapi/validate v0.19.0
+	github.com/go-sql-driver/mysql v1.4.1
 	github.com/go-swagger/go-swagger v0.19.0 // indirect
 	github.com/gorilla/handlers v1.4.0 // indirect
 	github.com/haya14busa/goverage v0.0.0-20180129164344-eec3514a20b5 // indirect
 	github.com/jessevdk/go-flags v1.4.0
+	github.com/jinzhu/gorm v1.9.9
 	github.com/joho/godotenv v1.3.0
+	github.com/lib/pq v1.1.1
 	github.com/mitchellh/gox v1.0.1 // indirect
 	github.com/oklog/oklog v0.3.2
 	github.com/oklog/run v1.0.0 // indirect
@@ -40,5 +43,7 @@ require (
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
 	golang.org/x/net v0.0.0-20190607181551-461777fb6f67
+	gopkg.in/gormigrate.v1 v1.5.0
+	gopkg.in/guregu/null.v3 v3.4.0
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 )

@@ -17,11 +17,9 @@ init_cmds = [
     "debug",
     "server",
     "--session-secret",
-    "xKRWhQZaTYMPqX0oZfmQLrAMLQlhotmm",
-    "--db-dsn",
-    "boltdb://storage/gomematic.db",
+    "2NeBoHfeppsgLmTewtcRBLkc",
     "--admin-email",
-    "admin@webhippie.de"
+    "gomematic@webhippie.de"
   ]
 ]
 
@@ -33,10 +31,8 @@ cmds = [
     "debug",
     "server",
     "--session-secret",
-    "xKRWhQZaTYMPqX0oZfmQLrAMLQlhotmm",
-    "--db-dsn",
-    "boltdb://storage/gomematic.db",
+    "2NeBoHfeppsgLmTewtcRBLkc",
     "--admin-email",
-    "admin@webhippie.de"
+    "gomematic@webhippie.de"
   ]
 ]

@@ -1,65 +1,65 @@
-package boltdb
+package gormdb
 
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Machiel/slugify"
 	"github.com/asaskevich/govalidator"
-	"github.com/asdine/storm"
-	"github.com/asdine/storm/q"
 	"github.com/gomematic/gomematic-api/pkg/model"
 	"github.com/gomematic/gomematic-api/pkg/service/teams"
 	"github.com/gomematic/gomematic-api/pkg/uuid"
 	"github.com/gomematic/gomematic-api/pkg/validation"
+	"github.com/jinzhu/gorm"
 )
 
 // Teams implements teams.Store interface.
 type Teams struct {
-	client *boltdb
+	client *gormdb
 }
 
 // List implements List from teams.Store interface.
 func (t *Teams) List(ctx context.Context) ([]*model.Team, error) {
 	records := make([]*model.Team, 0)
 
-	if err := t.client.handle.AllByIndex("Name", &records); err != nil {
-		return nil, err
-	}
+	err := t.client.handle.Order(
+		"name ASC",
+	).Find(
+		&records,
+	).Error
 
-	return records, nil
+	return records, err
 }
 
 // Show implements Show from teams.Store interface.
 func (t *Teams) Show(ctx context.Context, name string) (*model.Team, error) {
 	record := &model.Team{}
 
-	if err := t.client.handle.Select(
-		q.Or(
-			q.Eq("ID", name),
-			q.Eq("Slug", name),
-		),
-	).First(record); err != nil {
-		if err == storm.ErrNotFound {
-			return record, teams.ErrNotFound
-		}
+	err := t.client.handle.Where(
+		"id = ?",
+		name,
+	).Or(
+		"slug = ?",
+		name,
+	).First(
+		record,
+	).Error
 
-		return nil, err
+	if err == gorm.ErrRecordNotFound {
+		return record, teams.ErrNotFound
 	}
 
-	return record, nil
+	return record, err
 }
 
 // Create implements Create from teams.Store interface.
 func (t *Teams) Create(ctx context.Context, team *model.Team) (*model.Team, error) {
-	tx, err := t.client.handle.Begin(true)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer tx.Rollback()
+	tx := t.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	if team.Slug == "" {
 		for i := 0; true; i++ {
@@ -71,31 +71,32 @@ func (t *Teams) Create(ctx context.Context, team *model.Team) (*model.Team, erro
 				)
 			}
 
-			if err := tx.Select(
-				q.Eq("Slug", team.Slug),
-			).First(new(model.Team)); err != nil {
-				if err == storm.ErrNotFound {
-					break
-				}
-
-				return nil, err
+			if tx.Where(
+				"slug = ?",
+				team.Slug,
+			).First(
+				&model.Team{},
+			).RecordNotFound() {
+				break
 			}
 		}
 	}
 
 	team.ID = uuid.New().String()
-	team.UpdatedAt = time.Now().UTC()
-	team.CreatedAt = time.Now().UTC()
+
+	fmt.Printf("%+v\n", team)
 
 	if err := t.validateCreate(team); err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Save(team); err != nil {
+	if err := tx.Create(team).Error; err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -104,13 +105,12 @@ func (t *Teams) Create(ctx context.Context, team *model.Team) (*model.Team, erro
 
 // Update implements Update from teams.Store interface.
 func (t *Teams) Update(ctx context.Context, team *model.Team) (*model.Team, error) {
-	tx, err := t.client.handle.Begin(true)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer tx.Rollback()
+	tx := t.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
 	if team.Slug == "" {
 		for i := 0; true; i++ {
@@ -122,34 +122,31 @@ func (t *Teams) Update(ctx context.Context, team *model.Team) (*model.Team, erro
 				)
 			}
 
-			if err := tx.Select(
-				q.And(
-					q.Eq("Slug", team.Slug),
-					q.Not(
-						q.Eq("ID", team.ID),
-					),
-				),
-			).First(new(model.Team)); err != nil {
-				if err == storm.ErrNotFound {
-					break
-				}
-
-				return nil, err
+			if tx.Where(
+				"slug = ?",
+				team.Slug,
+			).Not(
+				"id",
+				team.ID,
+			).First(
+				&model.Team{},
+			).RecordNotFound() {
+				break
 			}
 		}
 	}
 
-	team.UpdatedAt = time.Now().UTC()
-
 	if err := t.validateUpdate(team); err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Save(team); err != nil {
+	if err := tx.Save(team).Error; err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -158,157 +155,175 @@ func (t *Teams) Update(ctx context.Context, team *model.Team) (*model.Team, erro
 
 // Delete implements Delete from teams.Store interface.
 func (t *Teams) Delete(ctx context.Context, name string) error {
-	tx, err := t.client.handle.Begin(true)
+	tx := t.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	if err != nil {
+	if err := t.client.handle.Where(
+		"id = ?",
+		name,
+	).Or(
+		"slug = ?",
+		name,
+	).Delete(
+		&model.Team{},
+	).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	defer tx.Rollback()
-
-	if err := tx.Select(
-		q.Or(
-			q.Eq("ID", name),
-			q.Eq("Slug", name),
-		),
-	).Delete(new(model.Team)); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return tx.Commit().Error
 }
 
 // ListUsers implements ListUsers from teams.Store interface.
 func (t *Teams) ListUsers(ctx context.Context, id string) ([]*model.TeamUser, error) {
 	records := make([]*model.TeamUser, 0)
 
-	if err := t.client.handle.Select(
-		q.Eq("TeamID", id),
-	).Find(&records); err != nil {
-		if err == storm.ErrNotFound {
-			return records, nil
-		}
+	err := t.client.handle.Where(
+		"team_id = ?",
+		id,
+	).Model(
+		&model.TeamUser{},
+	).Preload(
+		"Team",
+	).Preload(
+		"User",
+	).Find(
+		&records,
+	).Error
 
-		return nil, err
-	}
-
-	for _, record := range records {
-		team, err := t.Show(ctx, record.TeamID)
-
-		if err != nil {
-			return nil, err
-		}
-
-		user, err := t.client.Users().Show(ctx, record.UserID)
-
-		if err != nil {
-			return nil, err
-		}
-
-		record.Team = team
-		record.User = user
-	}
-
-	return records, nil
+	return records, err
 }
 
 // AppendUser implements AppendUser from teams.Store interface.
 func (t *Teams) AppendUser(ctx context.Context, teamID, userID, perm string) error {
-	tx, err := t.client.handle.Begin(true)
-
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-
-	if err := t.client.handle.Select(
-		q.And(
-			q.Eq("TeamID", teamID),
-			q.Eq("UserID", userID),
-		),
-	).First(new(model.TeamUser)); err == nil {
+	if t.isAssignedToUser(teamID, userID) {
 		return teams.ErrAlreadyAssigned
 	}
 
+	tx := t.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	record := &model.TeamUser{
-		TeamID:    teamID,
-		UserID:    userID,
-		Perm:      perm,
-		UpdatedAt: time.Now().UTC(),
-		CreatedAt: time.Now().UTC(),
+		TeamID: teamID,
+		UserID: userID,
+		Perm:   perm,
 	}
 
 	if err := t.validatePerm(record); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	if err := tx.Save(record); err != nil {
+	if err := tx.Create(record).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit()
+	return tx.Commit().Error
 }
 
 // PermitUser implements PermitUser from teams.Store interface.
 func (t *Teams) PermitUser(ctx context.Context, teamID, userID, perm string) error {
-	tx, err := t.client.handle.Begin(true)
-
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-	record := &model.TeamUser{}
-
-	if err := t.client.handle.Select(
-		q.And(
-			q.Eq("TeamID", teamID),
-			q.Eq("UserID", userID),
-		),
-	).First(record); err == storm.ErrNotFound {
+	if t.isUnassignedFromUser(teamID, userID) {
 		return teams.ErrNotAssigned
 	}
 
+	tx := t.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	record := &model.TeamUser{}
 	record.Perm = perm
-	record.UpdatedAt = time.Now().UTC()
 
 	if err := t.validatePerm(record); err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	if err := tx.Save(record); err != nil {
+	if err := tx.Where(
+		"team_id = ? AND user_id = ?",
+		teamID,
+		userID,
+	).Model(
+		&model.TeamUser{},
+	).Updates(
+		record,
+	).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit()
+	return tx.Commit().Error
 }
 
 // DropUser implements DropUser from teams.Store interface.
 func (t *Teams) DropUser(ctx context.Context, teamID, userID string) error {
-	tx, err := t.client.handle.Begin(true)
-
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-	record := &model.TeamUser{}
-
-	if err := t.client.handle.Select(
-		q.And(
-			q.Eq("TeamID", teamID),
-			q.Eq("UserID", userID),
-		),
-	).First(record); err == storm.ErrNotFound {
+	if t.isUnassignedFromUser(teamID, userID) {
 		return teams.ErrNotAssigned
 	}
 
-	if err := tx.DeleteStruct(record); err != nil {
+	tx := t.client.handle.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Where(
+		"team_id = ? AND user_id = ?",
+		teamID,
+		userID,
+	).Delete(
+		&model.TeamUser{},
+	).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit()
+	return tx.Commit().Error
+}
+
+func (t *Teams) isAssignedToUser(teamID, userID string) bool {
+	counter := 0
+
+	t.client.handle.Where(
+		"team_id = ? AND user_id = ?",
+		teamID,
+		userID,
+	).Model(
+		&model.TeamUser{},
+	).Count(
+		&counter,
+	)
+
+	return counter != 0
+}
+
+func (t *Teams) isUnassignedFromUser(teamID, userID string) bool {
+	counter := 0
+
+	t.client.handle.Where(
+		"team_id = ? AND user_id = ?",
+		teamID,
+		userID,
+	).Model(
+		&model.TeamUser{},
+	).Count(
+		&counter,
+	)
+
+	return counter == 0
 }
 
 func (t *Teams) validateCreate(record *model.Team) error {

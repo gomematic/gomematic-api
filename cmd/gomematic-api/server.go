@@ -84,14 +84,14 @@ func serverFlags(cfg *config.Config) []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name:        "db-dsn",
-			Value:       "boltdb://gomematic.db",
+			Value:       "boltdb://storage/gomematic.db",
 			Usage:       "database dsn",
 			EnvVars:     []string{"GOMEMATIC_API_DB_DSN"},
 			Destination: &cfg.Database.DSN,
 		},
 		&cli.StringFlag{
 			Name:        "upload-dsn",
-			Value:       "file://storage/",
+			Value:       "file://storage/uploads/",
 			Usage:       "uploads dsn",
 			EnvVars:     []string{"GOMEMATIC_API_UPLOAD_DSN"},
 			Destination: &cfg.Upload.DSN,
@@ -220,6 +220,12 @@ func serverAction(cfg *config.Config) cli.ActionFunc {
 
 				time.Sleep(dur)
 			}
+		}
+
+		if err := storage.Migrate(); err != nil {
+			log.Fatal().
+				Err(err).
+				Msg("failed to migrate database")
 		}
 
 		if cfg.Admin.Create {

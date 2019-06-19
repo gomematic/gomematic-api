@@ -2,7 +2,6 @@ package boltdb
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"os"
 	"path"
@@ -15,7 +14,6 @@ import (
 	"github.com/gomematic/gomematic-api/pkg/service/teams"
 	"github.com/gomematic/gomematic-api/pkg/service/users"
 	"github.com/gomematic/gomematic-api/pkg/store"
-	"github.com/rs/zerolog/log"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -66,28 +64,6 @@ func (db *boltdb) Admin(username, password, email string) error {
 		}
 	}
 
-	for i := 1; i <= 9; i++ {
-		if _, err := db.users.Create(context.TODO(), &model.User{
-			Username: fmt.Sprintf("user%d", i),
-			Password: fmt.Sprintf("user%d", i),
-			Email:    fmt.Sprintf("user%d@webhippie.de", i),
-			Active:   true,
-			Admin:    false,
-		}); err != nil {
-			log.Warn().
-				Err(err).
-				Msg("user")
-		}
-
-		if _, err := db.teams.Create(context.TODO(), &model.Team{
-			Name: fmt.Sprintf("Team %d", i),
-		}); err != nil {
-			log.Warn().
-				Err(err).
-				Msg("team")
-		}
-	}
-
 	return nil
 }
 
@@ -128,6 +104,11 @@ func (db *boltdb) Close() error {
 
 // Close simply closes the BoltDB connection.
 func (db *boltdb) Ping() error {
+	return nil
+}
+
+// Migrate executes required db migrations.
+func (db *boltdb) Migrate() error {
 	return nil
 }
 
