@@ -19,7 +19,10 @@ import (
 )
 
 type boltdb struct {
-	dsn    *url.URL
+	path    string
+	perms   os.FileMode
+	timeout time.Duration
+
 	handle *storm.DB
 	teams  teams.Store
 	users  users.Store
@@ -71,8 +74,9 @@ func (db *boltdb) Admin(username, password, email string) error {
 func (db *boltdb) Info() map[string]interface{} {
 	result := make(map[string]interface{})
 	result["driver"] = "boltdb"
-	result["path"] = db.path()
-	result["timeout"] = db.timeout().String()
+	result["path"] = db.path
+	result["perms"] = db.perms
+	result["timeout"] = db.timeout.String()
 
 	return result
 }
@@ -80,11 +84,11 @@ func (db *boltdb) Info() map[string]interface{} {
 // Close simply closes the BoltDB connection.
 func (db *boltdb) Open() error {
 	handle, err := storm.Open(
-		db.path(),
+		db.path,
 		storm.BoltOptions(
-			db.perms(),
+			db.perms,
 			&bolt.Options{
-				Timeout: db.timeout(),
+				Timeout: db.timeout,
 			},
 		),
 	)
@@ -112,48 +116,37 @@ func (db *boltdb) Migrate() error {
 	return nil
 }
 
-// perms retrieves the dir perms from dsn or fallback.
-func (db *boltdb) perms() os.FileMode {
-	if val := db.dsn.Query().Get("perms"); val != "" {
-		res, err := strconv.ParseUint(val, 8, 32)
-
-		if err != nil {
-			return os.FileMode(0600)
-		}
-
-		return os.FileMode(res)
-	}
-
-	return os.FileMode(0600)
-}
-
-// timeout retrieves the timeout from dsn or fallback.
-func (db *boltdb) timeout() time.Duration {
-	if val := db.dsn.Query().Get("timeout"); val != "" {
-		res, err := time.ParseDuration(val)
-
-		if err != nil {
-			return 1 * time.Second
-		}
-
-		return res
-	}
-
-	return 1 * time.Second
-}
-
-// path cleans the dsn and returns a valid path.
-func (db *boltdb) path() string {
-	return path.Join(
-		db.dsn.Host,
-		db.dsn.EscapedPath(),
-	)
-}
-
 // New initializes a new BoltDB connection.
 func New(dsn *url.URL) (store.Store, error) {
 	client := &boltdb{
-		dsn: dsn,
+		path: path.Join(
+			dsn.Host,
+			dsn.EscapedPath(),
+		),
+	}
+
+	if val := dsn.Query().Get("perms"); val != "" {
+		res, err := strconv.ParseUint(val, 8, 32)
+
+		if err != nil {
+			client.perms = os.FileMode(0600)
+		} else {
+			client.perms = os.FileMode(res)
+		}
+	} else {
+		client.perms = os.FileMode(0600)
+	}
+
+	if val := dsn.Query().Get("timeout"); val != "" {
+		res, err := time.ParseDuration(val)
+
+		if err != nil {
+			client.timeout = 1 * time.Second
+		} else {
+			client.timeout = res
+		}
+	} else {
+		client.timeout = 1 * time.Second
 	}
 
 	if err := client.Open(); err != nil {

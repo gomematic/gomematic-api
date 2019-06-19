@@ -13,8 +13,11 @@ import (
 	"github.com/jinzhu/gorm"
 	"gopkg.in/gormigrate.v1"
 
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
+	// Register MySQL driver for GORM
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+
+	// Register Postgres driver for GORM
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 type gormdb struct {
@@ -25,7 +28,6 @@ type gormdb struct {
 	database string
 	meta     url.Values
 
-	dsn    *url.URL
 	handle *gorm.DB
 	teams  teams.Store
 	users  users.Store
