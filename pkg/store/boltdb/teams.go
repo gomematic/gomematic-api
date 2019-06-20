@@ -24,8 +24,13 @@ type Teams struct {
 func (t *Teams) List(ctx context.Context) ([]*model.Team, error) {
 	records := make([]*model.Team, 0)
 
-	if err := t.client.handle.AllByIndex("Name", &records); err != nil {
-		return nil, err
+	err := t.client.handle.AllByIndex(
+		"Name",
+		&records,
+	)
+
+	if err == storm.ErrNotFound {
+		return records, nil
 	}
 
 	return records, nil
@@ -314,8 +319,6 @@ func (t *Teams) DropUser(ctx context.Context, teamID, userID string) error {
 func (t *Teams) validateCreate(record *model.Team) error {
 	errs := validation.Errors{}
 
-	// TODO: unique check for slug
-
 	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "slug",
@@ -323,12 +326,24 @@ func (t *Teams) validateCreate(record *model.Team) error {
 		})
 	}
 
-	// TODO: unique check for name
+	if t.uniqueValueIsPresent("Slug", record.Slug, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsByteLength(record.Name, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "name",
 			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if t.uniqueValueIsPresent("Name", record.Name, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is already taken"),
 		})
 	}
 
@@ -349,8 +364,6 @@ func (t *Teams) validateUpdate(record *model.Team) error {
 		})
 	}
 
-	// TODO: unique check for slug
-
 	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "slug",
@@ -358,12 +371,24 @@ func (t *Teams) validateUpdate(record *model.Team) error {
 		})
 	}
 
-	// TODO: unique check for name
+	if t.uniqueValueIsPresent("Slug", record.Slug, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsByteLength(record.Name, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "name",
 			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if t.uniqueValueIsPresent("Name", record.Name, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is already taken"),
 		})
 	}
 
@@ -387,4 +412,19 @@ func (t *Teams) validatePerm(record *model.TeamUser) error {
 	}
 
 	return nil
+}
+
+func (t *Teams) uniqueValueIsPresent(key, val, id string) bool {
+	if err := t.client.handle.Select(
+		q.And(
+			q.Eq(key, val),
+			q.Not(
+				q.Eq("ID", id),
+			),
+		),
+	).First(new(model.Team)); err == storm.ErrNotFound {
+		return false
+	}
+
+	return true
 }

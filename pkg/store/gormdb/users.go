@@ -393,8 +393,6 @@ func (u *Users) isUnassignedFromTeam(userID, teamID string) bool {
 func (u *Users) validateCreate(record *model.User) error {
 	errs := validation.Errors{}
 
-	// TODO: unique check for slug
-
 	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "slug",
@@ -402,7 +400,12 @@ func (u *Users) validateCreate(record *model.User) error {
 		})
 	}
 
-	// TODO: unique check for email
+	if u.uniqueValueIsPresent("slug", record.Slug, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsEmail(record.Email); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
@@ -411,12 +414,24 @@ func (u *Users) validateCreate(record *model.User) error {
 		})
 	}
 
-	// TODO: unique check for username
+	if u.uniqueValueIsPresent("email", record.Email, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "email",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsByteLength(record.Username, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "username",
 			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if u.uniqueValueIsPresent("username", record.Username, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "username",
+			Error: fmt.Errorf("is already taken"),
 		})
 	}
 
@@ -444,8 +459,6 @@ func (u *Users) validateUpdate(record *model.User) error {
 		})
 	}
 
-	// TODO: unique check for slug
-
 	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "slug",
@@ -453,7 +466,12 @@ func (u *Users) validateUpdate(record *model.User) error {
 		})
 	}
 
-	// TODO: unique check for email
+	if u.uniqueValueIsPresent("slug", record.Slug, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsEmail(record.Email); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
@@ -462,7 +480,12 @@ func (u *Users) validateUpdate(record *model.User) error {
 		})
 	}
 
-	// TODO: unique check for username
+	if u.uniqueValueIsPresent("email", record.Email, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "email",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsByteLength(record.Username, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
@@ -471,7 +494,12 @@ func (u *Users) validateUpdate(record *model.User) error {
 		})
 	}
 
-	// TODO: valid check for password
+	if u.uniqueValueIsPresent("username", record.Username, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "username",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if len(errs.Errors) > 0 {
 		return errs
@@ -493,4 +521,22 @@ func (u *Users) validatePerm(record *model.TeamUser) error {
 	}
 
 	return nil
+}
+
+func (u *Users) uniqueValueIsPresent(key, val, id string) bool {
+	counter := 0
+
+	u.client.handle.Where(
+		fmt.Sprintf("%s = ?", key),
+		val,
+	).Not(
+		"id = ?",
+		id,
+	).Model(
+		&model.User{},
+	).Count(
+		&counter,
+	)
+
+	return counter != 0
 }

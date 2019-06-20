@@ -329,8 +329,6 @@ func (t *Teams) isUnassignedFromUser(teamID, userID string) bool {
 func (t *Teams) validateCreate(record *model.Team) error {
 	errs := validation.Errors{}
 
-	// TODO: unique check for slug
-
 	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "slug",
@@ -338,12 +336,24 @@ func (t *Teams) validateCreate(record *model.Team) error {
 		})
 	}
 
-	// TODO: unique check for name
+	if t.uniqueValueIsPresent("slug", record.Slug, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsByteLength(record.Name, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "name",
 			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if t.uniqueValueIsPresent("name", record.Name, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is already taken"),
 		})
 	}
 
@@ -364,8 +374,6 @@ func (t *Teams) validateUpdate(record *model.Team) error {
 		})
 	}
 
-	// TODO: unique check for slug
-
 	if ok := govalidator.IsByteLength(record.Slug, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "slug",
@@ -373,12 +381,24 @@ func (t *Teams) validateUpdate(record *model.Team) error {
 		})
 	}
 
-	// TODO: unique check for name
+	if t.uniqueValueIsPresent("slug", record.Slug, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "slug",
+			Error: fmt.Errorf("is already taken"),
+		})
+	}
 
 	if ok := govalidator.IsByteLength(record.Name, 3, 255); !ok {
 		errs.Errors = append(errs.Errors, validation.Error{
 			Field: "name",
 			Error: fmt.Errorf("is not between 3 and 255 characters long"),
+		})
+	}
+
+	if t.uniqueValueIsPresent("name", record.Name, record.ID) {
+		errs.Errors = append(errs.Errors, validation.Error{
+			Field: "name",
+			Error: fmt.Errorf("is already taken"),
 		})
 	}
 
@@ -402,4 +422,22 @@ func (t *Teams) validatePerm(record *model.TeamUser) error {
 	}
 
 	return nil
+}
+
+func (t *Teams) uniqueValueIsPresent(key, val, id string) bool {
+	counter := 0
+
+	t.client.handle.Where(
+		fmt.Sprintf("%s = ?", key),
+		val,
+	).Not(
+		"id = ?",
+		id,
+	).Model(
+		&model.Team{},
+	).Count(
+		&counter,
+	)
+
+	return counter != 0
 }
