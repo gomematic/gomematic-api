@@ -75,7 +75,7 @@ func (db *boltdb) Info() map[string]interface{} {
 	result := make(map[string]interface{})
 	result["driver"] = "boltdb"
 	result["path"] = db.path
-	result["perms"] = db.perms
+	result["perms"] = db.perms.String()
 	result["timeout"] = db.timeout.String()
 
 	return result
