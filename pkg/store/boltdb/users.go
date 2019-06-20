@@ -499,7 +499,7 @@ func (u *Users) validatePerm(record *model.TeamUser) error {
 	if ok := govalidator.IsIn(record.Perm, "user", "admin", "owner"); !ok {
 		return validation.Errors{
 			Errors: []validation.Error{
-				validation.Error{
+				{
 					Field: "perm",
 					Error: fmt.Errorf("invalid permission value"),
 				},
