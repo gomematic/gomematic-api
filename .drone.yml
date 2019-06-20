@@ -62,6 +62,13 @@ steps:
   - name: gopath
     path: /srv/app
 
+- name: codacy
+  image: plugins/codacy:1
+  pull: always
+  settings:
+    token:
+      from_secret: codacy_token
+
 - name: build
   image: webhippie/golang:1.12
   pull: always
