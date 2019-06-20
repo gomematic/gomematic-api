@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 
@@ -119,23 +120,33 @@ func (db *gormdb) Open() error {
 			)
 		}
 	case "postgres":
+		host, port, err := net.SplitHostPort(db.host)
+
+		if err != nil {
+			return err
+		}
+
 		if db.password != "" {
 			connect = fmt.Sprintf(
-				"postgres://%s:%s@(%s)/%s?%s",
+				"host=%s port=%s dbname=%s user=%s password=%s",
+				host,
+				port,
+				db.database,
 				db.username,
 				db.password,
-				db.host,
-				db.database,
-				db.meta.Encode(),
 			)
 		} else {
 			connect = fmt.Sprintf(
-				"postgres://%s@(%s)/%s?%s",
-				db.username,
-				db.host,
+				"host=%s port=%s dbname=%s user=%s",
+				host,
+				port,
 				db.database,
-				db.meta.Encode(),
+				db.username,
 			)
+		}
+
+		for key, val := range db.meta {
+			connect = fmt.Sprintf("%s %s=%s", connect, key, strings.Join(val, ""))
 		}
 	}
 
@@ -212,7 +223,7 @@ func New(dsn *url.URL) (store.Store, error) {
 	case "postgres":
 		client.meta = dsn.Query()
 
-		if val := client.meta.Get("sslmode"); val != "" {
+		if val := client.meta.Get("sslmode"); val == "" {
 			client.meta.Set("sslmode", "disable")
 		}
 	}
