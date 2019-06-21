@@ -68,6 +68,16 @@ func (u *Users) List(ctx context.Context) ([]*model.User, error) {
 		return records, nil
 	}
 
+	for _, record := range records {
+		teams, err := u.ListTeams(ctx, record.ID)
+
+		if err != nil {
+			return records, err
+		}
+
+		record.Teams = teams
+	}
+
 	return records, err
 }
 
@@ -85,6 +95,14 @@ func (u *Users) Show(ctx context.Context, name string) (*model.User, error) {
 	if err == storm.ErrNotFound {
 		return record, users.ErrNotFound
 	}
+
+	teams, err := u.ListTeams(ctx, record.ID)
+
+	if err != nil {
+		return record, err
+	}
+
+	record.Teams = teams
 
 	return record, err
 }
@@ -248,28 +266,29 @@ func (u *Users) ListTeams(ctx context.Context, id string) ([]*model.TeamUser, er
 
 	if err := u.client.handle.Select(
 		q.Eq("UserID", id),
-	).Find(&records); err != nil {
-		if err == storm.ErrNotFound {
-			return records, nil
-		}
-
-		return nil, err
+	).Find(&records); err != nil && err != storm.ErrNotFound {
+		return records, err
 	}
 
 	for _, record := range records {
-		user, err := u.Show(ctx, record.UserID)
+		user := &model.User{}
 
-		if err != nil {
-			return nil, err
-		}
-
-		team, err := u.client.Teams().Show(ctx, record.TeamID)
-
-		if err != nil {
-			return nil, err
+		if err := u.client.handle.Select(
+			q.Eq("ID", record.UserID),
+		).First(user); err != nil && err != storm.ErrNotFound {
+			return records, err
 		}
 
 		record.User = user
+
+		team := &model.Team{}
+
+		if err := u.client.handle.Select(
+			q.Eq("ID", record.TeamID),
+		).First(team); err != nil && err != storm.ErrNotFound {
+			return records, err
+		}
+
 		record.Team = team
 	}
 

@@ -889,6 +889,13 @@ definitions:
         type: "string"
         format: "date-time"
         readOnly: true
+      teams:
+        type: "array"
+        items:
+          $ref: "#/definitions/team_user"
+        readOnly: true
+        x-omitempty: true
+        x-nullable: true
 
   team:
     type: "object"
@@ -913,6 +920,13 @@ definitions:
         type: "string"
         format: "date-time"
         readOnly: true
+      users:
+        type: "array"
+        items:
+          $ref: "#/definitions/team_user"
+        readOnly: true
+        x-omitempty: true
+        x-nullable: true
 
   team_user:
     type: "object"
@@ -990,6 +1004,13 @@ definitions:
         type: "string"
         format: "date-time"
         readOnly: true
+      teams:
+        type: "array"
+        items:
+          $ref: "#/definitions/team_user"
+        readOnly: true
+        x-omitempty: true
+        x-nullable: true
 
   team_user_params:
     type: "object"

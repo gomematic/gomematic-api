@@ -15,8 +15,8 @@ var (
 				type User struct {
 					ID        string `gorm:"primary_key"`
 					Slug      string `sql:"unique_index"`
-					Username  string `sql:"unique_index"`
 					Email     string `sql:"unique_index"`
+					Username  string `sql:"unique_index"`
 					Password  string
 					Active    bool `sql:"default:false"`
 					Admin     bool `sql:"default:false"`

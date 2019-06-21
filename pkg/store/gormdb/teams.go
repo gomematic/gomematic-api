@@ -24,6 +24,12 @@ func (t *Teams) List(ctx context.Context) ([]*model.Team, error) {
 
 	err := t.client.handle.Order(
 		"name ASC",
+	).Preload(
+		"Users",
+	).Preload(
+		"Users.Team",
+	).Preload(
+		"Users.User",
 	).Find(
 		&records,
 	).Error
@@ -41,6 +47,12 @@ func (t *Teams) Show(ctx context.Context, name string) (*model.Team, error) {
 	).Or(
 		"slug = ?",
 		name,
+	).Preload(
+		"Users",
+	).Preload(
+		"Users.Team",
+	).Preload(
+		"Users.User",
 	).First(
 		record,
 	).Error

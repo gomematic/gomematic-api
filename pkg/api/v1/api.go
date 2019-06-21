@@ -150,7 +150,7 @@ func convertAuthVerify(record *models.User) *models.AuthVerify {
 
 // convertProfile is a simple helper to convert between different model formats.
 func convertProfile(record *model.User) *models.Profile {
-	return &models.Profile{
+	res := &models.Profile{
 		ID:        strfmt.UUID(record.ID),
 		Slug:      &record.Slug,
 		Username:  &record.Username,
@@ -161,22 +161,34 @@ func convertProfile(record *model.User) *models.Profile {
 		CreatedAt: strfmt.DateTime(record.CreatedAt),
 		UpdatedAt: strfmt.DateTime(record.UpdatedAt),
 	}
+
+	for _, row := range record.Teams {
+		res.Teams = append(res.Teams, convertTeamUser(row))
+	}
+
+	return res
 }
 
 // convertTeam is a simple helper to convert between different model formats.
 func convertTeam(record *model.Team) *models.Team {
-	return &models.Team{
+	res := &models.Team{
 		ID:        strfmt.UUID(record.ID),
 		Slug:      &record.Slug,
 		Name:      &record.Name,
 		CreatedAt: strfmt.DateTime(record.CreatedAt),
 		UpdatedAt: strfmt.DateTime(record.UpdatedAt),
 	}
+
+	for _, row := range record.Users {
+		res.Users = append(res.Users, convertTeamUser(row))
+	}
+
+	return res
 }
 
 // convertUser is a simple helper to convert between different model formats.
 func convertUser(record *model.User) *models.User {
-	return &models.User{
+	res := &models.User{
 		ID:        strfmt.UUID(record.ID),
 		Slug:      &record.Slug,
 		Username:  &record.Username,
@@ -187,6 +199,12 @@ func convertUser(record *model.User) *models.User {
 		CreatedAt: strfmt.DateTime(record.CreatedAt),
 		UpdatedAt: strfmt.DateTime(record.UpdatedAt),
 	}
+
+	for _, row := range record.Teams {
+		res.Teams = append(res.Teams, convertTeamUser(row))
+	}
+
+	return res
 }
 
 // convertTeamUser is a simple helper to convert between different model formats.

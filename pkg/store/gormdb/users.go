@@ -62,6 +62,12 @@ func (u *Users) List(ctx context.Context) ([]*model.User, error) {
 
 	err := u.client.handle.Order(
 		"username ASC",
+	).Preload(
+		"Teams",
+	).Preload(
+		"Teams.User",
+	).Preload(
+		"Teams.Team",
 	).Find(
 		&records,
 	).Error
@@ -79,6 +85,12 @@ func (u *Users) Show(ctx context.Context, name string) (*model.User, error) {
 	).Or(
 		"slug = ?",
 		name,
+	).Preload(
+		"Teams",
+	).Preload(
+		"Teams.User",
+	).Preload(
+		"Teams.Team",
 	).First(
 		record,
 	).Error
