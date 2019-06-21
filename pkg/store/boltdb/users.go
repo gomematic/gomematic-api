@@ -248,12 +248,28 @@ func (u *Users) Delete(ctx context.Context, name string) error {
 
 	defer tx.Rollback()
 
+	record := &model.User{}
+
 	if err := tx.Select(
 		q.Or(
 			q.Eq("ID", name),
 			q.Eq("Slug", name),
 		),
-	).Delete(new(model.User)); err != nil {
+	).First(record); err != nil {
+		if err == storm.ErrNotFound {
+			return users.ErrNotFound
+		}
+
+		return err
+	}
+
+	if err := tx.Select(
+		q.Eq("UserID", record.ID),
+	).Delete(new(model.TeamUser)); err != nil {
+		return err
+	}
+
+	if err := tx.DeleteStruct(record); err != nil {
 		return err
 	}
 

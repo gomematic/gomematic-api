@@ -174,14 +174,38 @@ func (t *Teams) Delete(ctx context.Context, name string) error {
 		}
 	}()
 
-	if err := t.client.handle.Where(
+	record := &model.Team{}
+
+	if err := tx.Where(
 		"id = ?",
 		name,
 	).Or(
 		"slug = ?",
 		name,
+	).First(
+		record,
+	).Error; err != nil {
+		tx.Rollback()
+
+		if err == gorm.ErrRecordNotFound {
+			return teams.ErrNotFound
+		}
+
+		return err
+	}
+
+	if err := tx.Where(
+		"team_id = ?",
+		record.ID,
 	).Delete(
-		&model.Team{},
+		&model.TeamUser{},
+	).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Delete(
+		record,
 	).Error; err != nil {
 		tx.Rollback()
 		return err

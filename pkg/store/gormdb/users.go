@@ -238,14 +238,38 @@ func (u *Users) Delete(ctx context.Context, name string) error {
 		}
 	}()
 
-	if err := u.client.handle.Where(
+	record := &model.User{}
+
+	if err := tx.Where(
 		"id = ?",
 		name,
 	).Or(
 		"slug = ?",
 		name,
+	).First(
+		record,
+	).Error; err != nil {
+		tx.Rollback()
+
+		if err == gorm.ErrRecordNotFound {
+			return users.ErrNotFound
+		}
+
+		return err
+	}
+
+	if err := tx.Where(
+		"user_id = ?",
+		record.ID,
 	).Delete(
-		&model.User{},
+		&model.TeamUser{},
+	).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Delete(
+		record,
 	).Error; err != nil {
 		tx.Rollback()
 		return err

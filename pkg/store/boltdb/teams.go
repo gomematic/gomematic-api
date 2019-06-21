@@ -189,12 +189,28 @@ func (t *Teams) Delete(ctx context.Context, name string) error {
 
 	defer tx.Rollback()
 
+	record := &model.Team{}
+
 	if err := tx.Select(
 		q.Or(
 			q.Eq("ID", name),
 			q.Eq("Slug", name),
 		),
-	).Delete(new(model.Team)); err != nil {
+	).First(record); err != nil {
+		if err == storm.ErrNotFound {
+			return teams.ErrNotFound
+		}
+
+		return err
+	}
+
+	if err := tx.Select(
+		q.Eq("TeamID", record.ID),
+	).Delete(new(model.TeamUser)); err != nil {
+		return err
+	}
+
+	if err := tx.DeleteStruct(record); err != nil {
 		return err
 	}
 
