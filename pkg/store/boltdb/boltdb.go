@@ -86,7 +86,7 @@ func (db *boltdb) Prepare() error {
 	return nil
 }
 
-// Close simply closes the BoltDB connection.
+// Open simply opens the BoltDB connection.
 func (db *boltdb) Open() error {
 	handle, err := storm.Open(
 		db.path,
@@ -111,7 +111,7 @@ func (db *boltdb) Close() error {
 	return db.handle.Close()
 }
 
-// Close simply closes the BoltDB connection.
+// Ping checks the connection to BoltDB.
 func (db *boltdb) Ping() error {
 	return nil
 }

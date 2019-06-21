@@ -109,7 +109,7 @@ func (db *gormdb) Prepare() error {
 	return nil
 }
 
-// Open simply closes the MySQL connection.
+// Open simply opens the database connection.
 func (db *gormdb) Open() error {
 	connect := ""
 
@@ -178,12 +178,12 @@ func (db *gormdb) Open() error {
 	return nil
 }
 
-// Close simply closes the MySQL connection.
+// Close simply closes the database connection.
 func (db *gormdb) Close() error {
 	return db.handle.Close()
 }
 
-// Close simply closes the MySQL connection.
+// Ping checks the connection to database.
 func (db *gormdb) Ping() error {
 	return db.handle.DB().Ping()
 }
