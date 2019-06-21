@@ -81,6 +81,11 @@ func (db *boltdb) Info() map[string]interface{} {
 	return result
 }
 
+// Prepare is preparing some database behavior.
+func (db *boltdb) Prepare() error {
+	return nil
+}
+
 // Close simply closes the BoltDB connection.
 func (db *boltdb) Open() error {
 	handle, err := storm.Open(

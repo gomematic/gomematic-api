@@ -11,6 +11,7 @@ import (
 	"github.com/gomematic/gomematic-api/pkg/service/teams"
 	"github.com/gomematic/gomematic-api/pkg/service/users"
 	"github.com/gomematic/gomematic-api/pkg/store"
+	"github.com/gomematic/gomematic-api/pkg/store/gormdb/logger"
 	"github.com/jinzhu/gorm"
 	"gopkg.in/gormigrate.v1"
 
@@ -95,7 +96,20 @@ func (db *gormdb) Info() map[string]interface{} {
 	return result
 }
 
-// Close simply closes the MySQL connection.
+// Prepare is preparing some database behavior.
+func (db *gormdb) Prepare() error {
+	db.handle.LogMode(true)
+	db.handle.SetLogger(logger.New())
+
+	switch db.driver {
+	case "mysql":
+		db.handle.DB().SetMaxIdleConns(0)
+	}
+
+	return nil
+}
+
+// Open simply closes the MySQL connection.
 func (db *gormdb) Open() error {
 	connect := ""
 
@@ -160,11 +174,6 @@ func (db *gormdb) Open() error {
 	}
 
 	db.handle = handle
-
-	switch db.driver {
-	case "mysql":
-		db.handle.DB().SetMaxIdleConns(0)
-	}
 
 	return nil
 }

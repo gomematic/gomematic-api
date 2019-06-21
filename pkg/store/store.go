@@ -14,6 +14,7 @@ var (
 // Store provides the interface for the store implementations.
 type Store interface {
 	Info() map[string]interface{}
+	Prepare() error
 	Open() error
 	Close() error
 	Ping() error

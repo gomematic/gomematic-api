@@ -208,6 +208,12 @@ func serverAction(cfg *config.Config) cli.ActionFunc {
 			defer storage.Close()
 		}
 
+		if err := storage.Prepare(); err != nil {
+			log.Fatal().
+				Err(err).
+				Msg("failed to prepate database")
+		}
+
 		for i := 0; i < 10; i++ {
 			err := storage.Ping()
 
