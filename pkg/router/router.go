@@ -69,7 +69,10 @@ func Server(cfg *config.Config, uploads upload.Upload, registry *service.Registr
 							"v1",
 							"swagger",
 						),
-						"/api/v1/docs",
+						path.Join(
+							cfg.Server.Root,
+							"/api/v1/docs",
+						),
 					))
 				}
 

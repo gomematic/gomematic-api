@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"net/http"
+	"path"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
@@ -37,6 +38,8 @@ func New(cfg *config.Config, uploads upload.Upload, registry *service.Registry) 
 
 		return nil
 	}
+
+	spec.Spec().BasePath = path.Join(cfg.Server.Root, spec.Spec().BasePath)
 
 	api := operations.NewGomematicAPI(spec)
 
